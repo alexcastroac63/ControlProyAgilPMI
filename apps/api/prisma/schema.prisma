@@ -1,0 +1,498 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  LOCKED
+  DISABLED
+}
+
+enum ProjectStatus {
+  PLANNED
+  ACTIVE
+  PAUSED
+  CANCELLED
+  CLOSED
+}
+
+enum Priority {
+  LOWEST
+  LOW
+  MEDIUM
+  HIGH
+  HIGHEST
+  CRITICAL
+}
+
+enum WorkItemType {
+  EPIC
+  FEATURE
+  STORY
+  TASK
+  BUG
+  SPIKE
+}
+
+enum WorkItemStatus {
+  BACKLOG
+  READY
+  IN_PROGRESS
+  CODE_REVIEW
+  QA
+  UAT
+  DONE
+  BLOCKED
+}
+
+enum QaStatus {
+  PENDING
+  PASSED
+  FAILED
+  BLOCKED
+}
+
+enum NotificationChannel {
+  EMAIL
+  IN_APP
+  TEAMS
+  SLACK
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  READ
+  FAILED
+}
+
+enum RiskStatus {
+  OPEN
+  MITIGATED
+  ACCEPTED
+  CLOSED
+}
+
+enum SessionStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+model Organization {
+  id              String             @id @default(cuid())
+  name            String
+  slug            String             @unique
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  users           User[]
+  teams           Team[]
+  portfolios      Portfolio[]
+  programs        Program[]
+  projects        Project[]
+  roles           Role[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+  githubConnections GithubConnection[]
+}
+
+model User {
+  id              String          @id @default(cuid())
+  organizationId  String
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  firstName       String
+  lastName        String
+  email           String          @unique
+  passwordHash    String
+  status          UserStatus      @default(ACTIVE)
+  failedAttempts  Int             @default(0)
+  lockedUntil     DateTime?
+  lastAccessAt    DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  roles           UserRole[]
+  sessions        UserSession[]
+  comments        Comment[]
+  assignedItems   WorkItem[]      @relation("Assignee")
+  reportedItems   WorkItem[]      @relation("Reporter")
+  testRuns        TestRun[]
+  auditLogs       AuditLog[]
+  passwordResets  PasswordReset[]
+  teams           TeamMember[]
+}
+
+model Role {
+  id             String       @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  permissions    RolePermission[]
+  users          UserRole[]
+  @@unique([organizationId, name])
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  @@id([userId, roleId])
+}
+
+model Team {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  capacity       Int          @default(0)
+  createdAt      DateTime     @default(now())
+  members        TeamMember[]
+  projects       Project[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  skills    String[] @default([])
+  capacity  Int      @default(40)
+  vacations Json?
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([teamId, userId])
+}
+
+model Portfolio {
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  status         String          @default("ACTIVE")
+  priority       Priority        @default(MEDIUM)
+  annualRoadmap  Json?
+  createdAt      DateTime        @default(now())
+  programs       Program[]
+  projects       Project[]
+  goals          StrategicGoal[]
+  budgets        Budget[]
+  risks          Risk[]
+}
+
+model Program {
+  id             String       @id @default(cuid())
+  organizationId String
+  portfolioId    String?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  portfolio      Portfolio?   @relation(fields: [portfolioId], references: [id])
+  name           String
+  projects       Project[]
+}
+
+model StrategicGoal {
+  id          String    @id @default(cuid())
+  portfolioId String
+  name        String
+  kpi         String
+  target      Decimal
+  current     Decimal   @default(0)
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+}
+
+model Project {
+  id             String        @id @default(cuid())
+  organizationId String
+  portfolioId    String?
+  programId      String?
+  teamId         String?
+  name           String
+  code           String
+  description    String?
+  client         String?
+  sponsor        String?
+  projectManager String?
+  staffing       Json?
+  scrumMaster    String?
+  productOwner   String?
+  status         ProjectStatus @default(PLANNED)
+  budget         Decimal       @default(0)
+  budgetDetails  Json?
+  attachmentPath String?
+  startDate      DateTime?
+  endDate        DateTime?
+  priority       Priority      @default(MEDIUM)
+  projectType    String?
+  businessArea   String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  portfolio      Portfolio?    @relation(fields: [portfolioId], references: [id])
+  program        Program?      @relation(fields: [programId], references: [id])
+  team           Team?         @relation(fields: [teamId], references: [id])
+  workItems      WorkItem[]
+  sprints        Sprint[]
+  boards         Board[]
+  budgets        Budget[]
+  attachments    Attachment[]
+  risks          Risk[]
+  testSuites     TestSuite[]
+  githubConnections GithubConnection[]
+  @@unique([organizationId, code])
+}
+
+model Budget {
+  id          String     @id @default(cuid())
+  portfolioId String?
+  projectId   String?
+  amount      Decimal
+  executed    Decimal    @default(0)
+  currency    String     @default("USD")
+  fiscalYear  Int
+  portfolio   Portfolio? @relation(fields: [portfolioId], references: [id])
+  project     Project?   @relation(fields: [projectId], references: [id])
+}
+
+model Risk {
+  id          String     @id @default(cuid())
+  portfolioId String?
+  projectId   String?
+  title       String
+  impact      Priority
+  probability Int
+  mitigation  String?
+  status      RiskStatus @default(OPEN)
+  portfolio   Portfolio? @relation(fields: [portfolioId], references: [id])
+  project     Project?   @relation(fields: [projectId], references: [id])
+}
+
+model WorkItem {
+  id             String         @id @default(cuid())
+  projectId      String
+  parentId       String?
+  sprintId       String?
+  assigneeId     String?
+  reporterId     String?
+  key            String
+  title          String
+  description    String?
+  type           WorkItemType
+  status         WorkItemStatus @default(BACKLOG)
+  priority       Priority       @default(MEDIUM)
+  storyPoints    Int?
+  rank           Int            @default(0)
+  labels         String[]       @default([])
+  dueDate        DateTime?
+  slaHours       Int?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent         WorkItem?      @relation("Hierarchy", fields: [parentId], references: [id])
+  children       WorkItem[]     @relation("Hierarchy")
+  sprint         Sprint?        @relation(fields: [sprintId], references: [id])
+  assignee       User?          @relation("Assignee", fields: [assigneeId], references: [id])
+  reporter       User?          @relation("Reporter", fields: [reporterId], references: [id])
+  comments       Comment[]
+  attachments    Attachment[]
+  dependencies   WorkItemDependency[] @relation("DependsOn")
+  dependents     WorkItemDependency[] @relation("Dependent")
+  testCases      TestCase[]
+  timeEntries    TimeEntry[]
+  @@unique([projectId, key])
+}
+
+model WorkItemDependency {
+  fromId String
+  toId   String
+  from   WorkItem @relation("Dependent", fields: [fromId], references: [id], onDelete: Cascade)
+  to     WorkItem @relation("DependsOn", fields: [toId], references: [id], onDelete: Cascade)
+  @@id([fromId, toId])
+}
+
+model Sprint {
+  id        String     @id @default(cuid())
+  projectId String
+  name      String
+  goal      String?
+  startDate DateTime
+  endDate   DateTime
+  velocity  Int        @default(0)
+  capacity  Int        @default(0)
+  startedAt DateTime?
+  closedAt  DateTime?
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  items     WorkItem[]
+}
+
+model Board {
+  id        String        @id @default(cuid())
+  projectId String
+  name      String
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  columns   BoardColumn[]
+}
+
+model BoardColumn {
+  id       String         @id @default(cuid())
+  boardId  String
+  name     String
+  status   WorkItemStatus
+  wipLimit Int?
+  position Int
+  board    Board          @relation(fields: [boardId], references: [id], onDelete: Cascade)
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  workItemId String
+  authorId   String
+  body       String
+  createdAt  DateTime @default(now())
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  author     User     @relation(fields: [authorId], references: [id])
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  projectId  String?
+  workItemId String?
+  testRunId  String?
+  fileName   String
+  url        String
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
+  project    Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItem   WorkItem? @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  testRun    TestRun?  @relation(fields: [testRunId], references: [id], onDelete: Cascade)
+}
+
+model TestSuite {
+  id        String     @id @default(cuid())
+  projectId String
+  name      String
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cases     TestCase[]
+}
+
+model TestCase {
+  id          String    @id @default(cuid())
+  suiteId     String
+  workItemId  String?
+  title       String
+  steps       Json
+  expected    String
+  status      QaStatus  @default(PENDING)
+  suite       TestSuite @relation(fields: [suiteId], references: [id], onDelete: Cascade)
+  workItem    WorkItem? @relation(fields: [workItemId], references: [id])
+  runs        TestRun[]
+}
+
+model TestRun {
+  id          String       @id @default(cuid())
+  testCaseId  String
+  executedById String?
+  status      QaStatus
+  evidence    String?
+  notes       String?
+  executedAt  DateTime     @default(now())
+  testCase    TestCase     @relation(fields: [testCaseId], references: [id], onDelete: Cascade)
+  executedBy  User?        @relation(fields: [executedById], references: [id])
+  attachments Attachment[]
+}
+
+model GithubConnection {
+  id             String       @id @default(cuid())
+  organizationId String
+  projectId      String?
+  owner          String
+  repo           String
+  installationId String?
+  accessTokenEnc String?
+  webhookSecret  String?
+  syncedAt       DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project        Project?     @relation(fields: [projectId], references: [id])
+  @@unique([organizationId, owner, repo])
+}
+
+model Notification {
+  id             String              @id @default(cuid())
+  organizationId String
+  userId         String?
+  channel        NotificationChannel
+  status         NotificationStatus  @default(PENDING)
+  event          String
+  title          String
+  body           String
+  metadata       Json?
+  createdAt      DateTime            @default(now())
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  actorId        String?
+  action         String
+  entity         String
+  entityId       String?
+  metadata       Json?
+  ipAddress      String?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor          User?        @relation(fields: [actorId], references: [id])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserSession {
+  id           String        @id @default(cuid())
+  userId       String
+  refreshHash  String
+  userAgent    String?
+  ipAddress    String?
+  status       SessionStatus @default(ACTIVE)
+  expiresAt    DateTime
+  createdAt    DateTime      @default(now())
+  revokedAt    DateTime?
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TimeEntry {
+  id         String   @id @default(cuid())
+  workItemId String
+  userId     String
+  minutes    Int
+  note       String?
+  loggedAt   DateTime @default(now())
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+}

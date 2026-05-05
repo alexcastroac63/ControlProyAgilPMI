@@ -1,0 +1,152 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-devhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devhub}
+      POSTGRES_DB: ${POSTGRES_DB:-devhub}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-devhub}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api-dashboard:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: devhub-api:local
+    env_file: .env.example
+    environment:
+      API_MODULE: dashboard
+      API_PORT: 4000
+      DATABASE_URL: postgresql://devhub:devhub@postgres:5432/devhub?schema=public
+    ports:
+      - "4101:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api-projects:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: devhub-api:local
+    env_file: .env.example
+    environment:
+      API_MODULE: projects
+      API_PORT: 4000
+      DATABASE_URL: postgresql://devhub:devhub@postgres:5432/devhub?schema=public
+    ports:
+      - "4102:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api-scrum-board:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: devhub-api:local
+    env_file: .env.example
+    environment:
+      API_MODULE: scrum-board
+      API_PORT: 4000
+      DATABASE_URL: postgresql://devhub:devhub@postgres:5432/devhub?schema=public
+    ports:
+      - "4103:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api-qa:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: devhub-api:local
+    env_file: .env.example
+    environment:
+      API_MODULE: qa
+      API_PORT: 4000
+      DATABASE_URL: postgresql://devhub:devhub@postgres:5432/devhub?schema=public
+    ports:
+      - "4104:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api-github:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: devhub-api:local
+    env_file: .env.example
+    environment:
+      API_MODULE: github
+      API_PORT: 4000
+      DATABASE_URL: postgresql://devhub:devhub@postgres:5432/devhub?schema=public
+    ports:
+      - "4105:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api-teams:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: devhub-api:local
+    env_file: .env.example
+    environment:
+      API_MODULE: teams
+      API_PORT: 4000
+      DATABASE_URL: postgresql://devhub:devhub@postgres:5432/devhub?schema=public
+    ports:
+      - "4106:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api-gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./docker/nginx/backend-gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api-dashboard
+      - api-projects
+      - api-scrum-board
+      - api-qa
+      - api-github
+      - api-teams
+
+  ui:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    env_file: .env.example
+    environment:
+      NEXT_PUBLIC_API_URL: /api
+      INTERNAL_API_URL: http://api-gateway:4000/api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    restart: unless-stopped
+    ports:
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+volumes:
+  postgres_data:
+  portainer_data:

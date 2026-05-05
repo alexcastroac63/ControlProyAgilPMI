@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --app-bg: #17130f;
+  --shell-bg: #020713;
+  --panel-bg: #211f1d;
+  --card-bg: #1d2a3a;
+  --card-soft: #243246;
+  --border: #344254;
+  --text: #f8fafc;
+  --muted: #cbd5e1;
+  --accent: #fb7a32;
+  --action: #459fff;
+  --chart-grid: #334155;
+  --chart-axis: #94a3b8;
+  --chart-area-stroke: #22c7d9;
+  --chart-area-fill: #164e63;
+  --chart-bar-fill: #38bdf8;
+  --chart-tooltip-bg: #020617;
+}
+.theme-light {
+  color-scheme: light;
+  --app-bg: #eef1f5;
+  --shell-bg: #f8fafc;
+  --panel-bg: #ffffff;
+  --card-bg: #ffffff;
+  --card-soft: #eef2f7;
+  --border: #d6dde7;
+  --text: #102033;
+  --muted: #617083;
+  --accent: #fb7a32;
+  --action: #2563eb;
+  --chart-grid: #d8e0ea;
+  --chart-axis: #738197;
+  --chart-area-stroke: #2f8ea8;
+  --chart-area-fill: #cfe3ea;
+  --chart-bar-fill: #5f8fca;
+  --chart-tooltip-bg: #ffffff;
+}
+html,
+body { max-width: 100%; overflow-x: hidden; }
+body { margin: 0; background: var(--app-bg); color: var(--text); }
+body.mobile-menu-open { overflow: hidden; }
+* { box-sizing: border-box; }
+button,
+a,
+input,
+select,
+textarea { touch-action: manipulation; }
+
+.app-shell { background: var(--app-bg); color: var(--text); }
+.app-sidebar { background: var(--shell-bg); border-color: var(--border); }
+.app-main-panel { background: var(--panel-bg); border-color: color-mix(in srgb, var(--border) 72%, transparent); }
+.app-topbar { background: color-mix(in srgb, var(--panel-bg) 94%, transparent); border-color: var(--border); }
+.mobile-bottom-nav { background: color-mix(in srgb, var(--shell-bg) 96%, transparent); border-color: var(--border); }
+.app-nav-link { color: var(--muted); }
+.app-nav-link:hover { background: color-mix(in srgb, var(--card-soft) 72%, transparent); color: var(--text); }
+.app-nav-link-active { background: color-mix(in srgb, var(--card-soft) 86%, transparent); color: var(--text); }
+.app-nav-link-active::before {
+  content: "";
+  width: 4px;
+  align-self: stretch;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.theme-light .bg-slate-950,
+.theme-light .bg-slate-950\/60,
+.theme-light .bg-slate-950\/80,
+.theme-light .bg-slate-950\/90 { background-color: var(--panel-bg) !important; }
+.theme-light .bg-slate-900,
+.theme-light .bg-slate-900\/50,
+.theme-light .bg-slate-900\/60,
+.theme-light .bg-slate-900\/70 { background-color: var(--card-bg) !important; }
+.theme-light .bg-slate-800 { background-color: var(--card-soft) !important; }
+.theme-light .hover\:bg-slate-800:hover,
+.theme-light .hover\:bg-slate-900:hover,
+.theme-light .hover\:bg-slate-900\/70:hover { background-color: #e8edf4 !important; }
+.theme-light .border-slate-900,
+.theme-light .border-slate-800,
+.theme-light .border-slate-700,
+.theme-light .border-slate-600 { border-color: var(--border) !important; }
+.theme-light .text-slate-100,
+.theme-light .text-slate-200,
+.theme-light .text-slate-300 { color: var(--text) !important; }
+.theme-light .text-slate-400,
+.theme-light .text-slate-500 { color: var(--muted) !important; }
+.theme-light input,
+.theme-light textarea,
+.theme-light select { background-color: #ffffff; color: var(--text); border-color: var(--border); }
+.theme-light input::placeholder,
+.theme-light textarea::placeholder { color: #64748b; }
+.theme-light .text-cyan-300 { color: #267b91 !important; }
+.theme-light .text-emerald-400 { color: #16865c !important; }
+.theme-light .text-rose-400 { color: #b33a55 !important; }
+
+input,
+textarea,
+select { color: var(--text); }
+
+@media (max-width: 767px) {
+  html,
+  body {
+    height: 100%;
+    overscroll-behavior: none;
+  }
+
+  .mobile-content h1 {
+    font-size: 1.65rem;
+    line-height: 2rem;
+  }
+
+  .mobile-content h2 {
+    line-height: 1.45;
+  }
+
+  .mobile-content table {
+    min-width: 720px;
+  }
+
+  .mobile-content section,
+  .mobile-content article,
+  .mobile-content form,
+  .mobile-content .rounded-lg,
+  .mobile-content .rounded-xl {
+    max-width: 100%;
+  }
+
+  .mobile-content input,
+  .mobile-content select,
+  .mobile-content textarea,
+  .mobile-content button {
+    max-width: 100%;
+  }
+
+  .mobile-content .grid {
+    min-width: 0;
+  }
+}

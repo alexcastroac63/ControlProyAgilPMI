@@ -1,0 +1,21 @@
+{
+  "name": "enterprise-devops-hub",
+  "private": true,
+  "version": "1.0.0",
+  "description": "SaaS enterprise para portafolio, Scrum, QA y DevOps Hub.",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "install:all": "pnpm install",
+    "dev": "corepack pnpm --parallel --filter @devhub/api --filter @devhub/web dev",
+    "build": "corepack pnpm --filter @devhub/api build && corepack pnpm --filter @devhub/web build",
+    "lint": "corepack pnpm --filter @devhub/api lint && corepack pnpm --filter @devhub/web lint",
+    "test": "corepack pnpm --filter @devhub/api test",
+    "prod": "docker compose up --build -d",
+    "db:migrate": "corepack pnpm --filter @devhub/api prisma:migrate",
+    "db:seed": "corepack pnpm --filter @devhub/api prisma:seed"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.3"
+  }
+}
