@@ -1,6 +1,6 @@
 # Enterprise DevOps Hub
 
-SaaS enterprise-grade tipo Jira Software + Azure DevOps + Monday.com para gestión de portafolio, proyectos Scrum, QA, equipos, dashboards ejecutivos, reportería e integración GitHub.
+SaaS enterprise-grade para gestión de portafolio, proyectos Scrum, QA, equipos, dashboards ejecutivos, reportería e integración GitHub.
 
 ## Stack
 

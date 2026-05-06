@@ -15,7 +15,7 @@ const project = {
   projectManager: "Alex Admin",
   attachmentPath: "C:\\DatosApp\\DEVHUB",
   description:
-    "Construccion de una plataforma SaaS enterprise tipo Jira, Azure DevOps, Portfolio Management y DevOps Hub. El alcance incluye autenticacion local con JWT, sesiones de 3 horas, administracion de proyectos, backlog, Scrum Board, QA estilo Xray, integracion GitHub, configuracion de adjuntos locales y SharePoint, dashboard, temas claro/oscuro, soporte movil, Docker, API NestJS y UI Next.js.",
+    "Construccion de una plataforma SaaS enterprise para Portfolio Management y DevOps Hub. El alcance incluye autenticacion local con JWT, sesiones de 3 horas, administracion de proyectos, backlog, Scrum Board, QA empresarial, integracion GitHub, configuracion de adjuntos locales y SharePoint, dashboard, temas claro/oscuro, soporte movil, Docker, API NestJS y UI Next.js.",
   staffing: [
     { id: "devhub-member-1", personId: "person-1", name: "Alex Admin", email: "admin@devhub.local", role: "Encargado del proyecto", allocation: 50 },
     { id: "devhub-member-2", personId: "person-2", name: "Diana Developer", email: "diana.dev@devhub.local", role: "Desarrollador", allocation: 100 },

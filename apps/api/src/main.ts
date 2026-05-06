@@ -17,7 +17,7 @@ async function bootstrap() {
 
   const swagger = new DocumentBuilder()
     .setTitle("Enterprise DevOps Hub API")
-    .setDescription("Jira + Portfolio Management + DevOps Hub")
+    .setDescription("Portfolio Management + DevOps Hub")
     .setVersion("1.0.0")
     .addBearerAuth()
     .build();

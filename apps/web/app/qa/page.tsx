@@ -215,7 +215,7 @@ export default function QaPage() {
       <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className="text-3xl font-semibold">QA Testing</h1>
-          <p className="mt-1 text-sm text-slate-400">Gestion tipo Xray Jira: planes, suites, casos, ejecuciones, defectos y trazabilidad por proyecto.</p>
+          <p className="mt-1 text-sm text-slate-400">Gestion QA empresarial: planes, suites, casos, ejecuciones, defectos y trazabilidad por proyecto.</p>
         </div>
         <label className="space-y-2">
           <span className="text-xs text-slate-400">Proyecto</span>
