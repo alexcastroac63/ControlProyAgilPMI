@@ -4,7 +4,6 @@ import { Button, cn } from "@devhub/ui";
 import { BarChart3, Bell, Boxes, GitPullRequest, KanbanSquare, ListTodo, LogOut, Menu, Moon, Search, Settings, ShieldCheck, Sun, Users, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import * as React from "react";
-import { seedDevhubBuildProject } from "@/lib/devhub-project-seed";
 import { useSessionStore } from "@/store/session";
 
 const nav = [
@@ -35,7 +34,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     sessionStorage.removeItem(reloadKey);
 
-    seedDevhubBuildProject();
     const savedTheme = localStorage.getItem("devhub.theme") === "light" ? "light" : "dark";
     setTheme(savedTheme);
     document.documentElement.classList.toggle("theme-light", savedTheme === "light");

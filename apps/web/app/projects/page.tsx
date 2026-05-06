@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageLoading } from "@/components/layout/page-loading";
 import { api } from "@/lib/api";
 import { canSeeProject, getUserAccessContext, UserAccessContext } from "@/lib/access-control";
 import { createId } from "@/lib/ids";
@@ -200,7 +201,7 @@ export default function ProjectsPage() {
   const router = useRouter();
   const [routeProjectCode, setRouteProjectCode] = useState<string | null>(null);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
-  const [localProjects, setLocalProjects] = useState<Project[]>(demo);
+  const [localProjects, setLocalProjects] = useState<Project[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [accessContext, setAccessContext] = useState<UserAccessContext | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -239,7 +240,6 @@ export default function ProjectsPage() {
   useEffect(() => {
     const saved = localStorage.getItem(projectsStorageKey);
     if (saved) setLocalProjects((JSON.parse(saved) as Project[]).map(normalizeProjectStatus));
-    else localStorage.setItem(projectsStorageKey, JSON.stringify(demo));
     setRouteProjectCode(new URLSearchParams(window.location.search).get("project"));
     setAccessContext(getUserAccessContext());
     setHydrated(true);
@@ -313,6 +313,10 @@ export default function ProjectsPage() {
 
   return (
     <AppShell>
+      {!hydrated ? (
+        <PageLoading message="Cargando proyectos reales..." />
+      ) : (
+      <>
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-3xl font-semibold">Administracion de Proyectos</h1>
@@ -436,7 +440,17 @@ export default function ProjectsPage() {
             )}
           </Card>
         ))}
+        {projects.length === 0 && (
+          <Card className="grid min-h-48 place-items-center text-center">
+            <div>
+              <h2 className="text-lg font-semibold">No hay proyectos creados</h2>
+              <p className="mt-2 text-sm text-slate-400">Crea el primer proyecto para comenzar a cargar informacion real.</p>
+            </div>
+          </Card>
+        )}
       </div>
+      </>
+      )}
     </AppShell>
   );
 }

@@ -8,6 +8,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageLoading } from "@/components/layout/page-loading";
 import { api } from "@/lib/api";
 import { canSeeProject, getUserAccessContext, isActiveSprint, UserAccessContext } from "@/lib/access-control";
 import { createId } from "@/lib/ids";
@@ -108,8 +109,8 @@ export default function BacklogPage() {
   const router = useRouter();
   const [routeProjectId, setRouteProjectId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [items, setItems] = useState<WorkItem[]>(demoItems);
-  const [sprints, setSprints] = useState<Sprint[]>(demoSprints);
+  const [items, setItems] = useState<WorkItem[]>([]);
+  const [sprints, setSprints] = useState<Sprint[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState(emptyStory);
   const [showStoryForm, setShowStoryForm] = useState(false);
@@ -126,19 +127,19 @@ export default function BacklogPage() {
   const [hydrated, setHydrated] = useState(false);
   const [accessContext, setAccessContext] = useState<UserAccessContext | null>(null);
 
-  const { data: projects = demoProjects } = useQuery({
+  const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: () => api<Project[]>("/projects"),
     retry: false
   });
 
   const availableProjects = useMemo(() => {
-    const source = localProjects.length ? localProjects : projects.length ? projects : demoProjects;
+    const source = localProjects.length ? localProjects : projects;
     return accessContext ? source.filter((project) => canSeeProject(project, accessContext)) : source;
   }, [accessContext, localProjects, projects]);
   const activeSelectedProjectId = selectedProjectId ?? routeProjectId;
   const selectedProject = activeSelectedProjectId
-    ? availableProjects.find((p) => (p.id ?? p.code) === activeSelectedProjectId) ?? demoProjects.find((p) => p.id === activeSelectedProjectId)
+    ? availableProjects.find((p) => (p.id ?? p.code) === activeSelectedProjectId)
     : null;
 
   useEffect(() => {
@@ -478,6 +479,10 @@ export default function BacklogPage() {
   if (!selectedProject) {
     return (
       <AppShell>
+        {!hydrated ? (
+          <PageLoading message="Cargando proyectos y backlog reales..." />
+        ) : (
+        <>
         <div className="mb-6">
           <h1 className="text-3xl font-semibold">Backlog</h1>
           <p className="mt-1 text-sm text-slate-400">Selecciona un proyecto para visualizar sus historias de usuario.</p>
@@ -499,6 +504,8 @@ export default function BacklogPage() {
             </a>
           ))}
         </section>
+        </>
+        )}
       </AppShell>
     );
   }

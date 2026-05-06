@@ -5,6 +5,7 @@ import { AlertTriangle, BarChart3, Bug, CheckCircle2, ClipboardCheck, FileCheck2
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageLoading } from "@/components/layout/page-loading";
 
 type ProjectSummary = {
   id?: string;
@@ -103,13 +104,14 @@ const demoDefects: Defect[] = [
 ];
 
 export default function QaPage() {
-  const [projects, setProjects] = useState<ProjectSummary[]>(demoProjects);
-  const [selectedProject, setSelectedProject] = useState("PROY");
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [selectedProject, setSelectedProject] = useState("");
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>("Resumen");
-  const [cases, setCases] = useState<TestCase[]>(demoCases);
-  const [executions, setExecutions] = useState<TestExecution[]>(demoExecutions);
-  const [defects, setDefects] = useState<Defect[]>(demoDefects);
+  const [cases, setCases] = useState<TestCase[]>([]);
+  const [executions, setExecutions] = useState<TestExecution[]>([]);
+  const [defects, setDefects] = useState<Defect[]>([]);
   const [stories, setStories] = useState<WorkItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const savedProjects = localStorage.getItem(projectsStorageKey);
@@ -141,11 +143,12 @@ export default function QaPage() {
       if (parsed.executions) setExecutions(parsed.executions);
       if (parsed.defects) setDefects(parsed.defects);
     }
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(qaStorageKey, JSON.stringify({ cases, executions, defects }));
-  }, [cases, executions, defects]);
+    if (hydrated) localStorage.setItem(qaStorageKey, JSON.stringify({ cases, executions, defects }));
+  }, [cases, executions, defects, hydrated]);
 
   const project = projects.find((item) => item.code === selectedProject) ?? projects[0];
   const projectCases = useMemo(() => cases.filter((item) => item.projectCode === selectedProject), [cases, selectedProject]);
@@ -212,6 +215,10 @@ export default function QaPage() {
 
   return (
     <AppShell>
+      {!hydrated ? (
+        <PageLoading message="Cargando informacion real de QA..." />
+      ) : (
+      <>
       <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className="text-3xl font-semibold">QA Testing</h1>
@@ -260,6 +267,8 @@ export default function QaPage() {
       {activeTab === "Casos de prueba" && <CasesView cases={projectCases} />}
       {activeTab === "Ejecuciones" && <ExecutionsView executions={projectExecutions} />}
       {activeTab === "Trazabilidad" && <TraceabilityView stories={projectStories} cases={projectCases} defects={projectDefects} onUpdateStoryStatus={updateScrumStoryStatus} />}
+      </>
+      )}
     </AppShell>
   );
 }

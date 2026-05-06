@@ -5,6 +5,7 @@ import { BarChart3, Check, Code2, Crown, KeyRound, Mail, Search, ShieldCheck, Us
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageLoading } from "@/components/layout/page-loading";
 import { createId } from "@/lib/ids";
 
 type Person = {
@@ -46,17 +47,18 @@ const demoPeople: Person[] = [
 
 export default function TeamsPage() {
   const [section, setSection] = useState<"users" | "roles">("users");
-  const [people, setPeople] = useState<Person[]>(demoPeople);
+  const [people, setPeople] = useState<Person[]>([]);
   const [roleList, setRoleList] = useState<string[]>(accessRoles);
   const [policies, setPolicies] = useState<Record<string, RolePolicy>>(() => buildDefaultPolicies());
   const [restrictions, setRestrictions] = useState<Record<string, RoleRestriction>>(() => buildDefaultRestrictions());
   const [query, setQuery] = useState("");
-  const [selectedUserId, setSelectedUserId] = useState(demoPeople[0].id);
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedRole, setSelectedRole] = useState("Project Manager");
   const [newUser, setNewUser] = useState({ firstName: "", lastName: "", email: "", defaultRole: "Desarrollador", accessRole: "Viewer" });
   const [newRoleName, setNewRoleName] = useState("");
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [editingUser, setEditingUser] = useState<Person | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const savedPeople = localStorage.getItem(peopleKey);
@@ -64,18 +66,18 @@ export default function TeamsPage() {
     const savedRoles = localStorage.getItem(rolesKey);
     const savedRestrictions = localStorage.getItem(restrictionsKey);
     if (savedPeople) setPeople((JSON.parse(savedPeople) as Person[]).map(normalizePerson));
-    else localStorage.setItem(peopleKey, JSON.stringify(demoPeople));
     if (savedRoles) setRoleList(JSON.parse(savedRoles));
     else localStorage.setItem(rolesKey, JSON.stringify(accessRoles));
     if (savedPolicies) setPolicies(JSON.parse(savedPolicies));
     else localStorage.setItem(policyKey, JSON.stringify(buildDefaultPolicies()));
     if (savedRestrictions) setRestrictions(JSON.parse(savedRestrictions));
     else localStorage.setItem(restrictionsKey, JSON.stringify(buildDefaultRestrictions()));
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(peopleKey, JSON.stringify(people));
-  }, [people]);
+    if (hydrated) localStorage.setItem(peopleKey, JSON.stringify(people));
+  }, [hydrated, people]);
 
   useEffect(() => {
     localStorage.setItem(policyKey, JSON.stringify(policies));
@@ -214,6 +216,10 @@ export default function TeamsPage() {
 
   return (
     <AppShell>
+      {!hydrated ? (
+        <PageLoading message="Cargando usuarios y perfiles reales..." />
+      ) : (
+      <>
       <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className="text-3xl font-semibold">Administracion de usuarios, perfiles y permisos</h1>
@@ -396,6 +402,8 @@ export default function TeamsPage() {
             </div>
           </form>
         </UserModal>
+      )}
+      </>
       )}
     </AppShell>
   );

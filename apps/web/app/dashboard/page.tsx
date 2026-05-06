@@ -6,6 +6,7 @@ import { Activity, Bug, ClipboardList, Percent } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageLoading } from "@/components/layout/page-loading";
 import { api } from "@/lib/api";
 import { canSeeProject, getUserAccessContext } from "@/lib/access-control";
 
@@ -21,9 +22,11 @@ const fallback = {
 };
 
 export default function DashboardPage() {
-  const { data = fallback } = useQuery({ queryKey: ["executive"], queryFn: () => api<typeof fallback>("/dashboard/executive"), retry: false });
+  const { data, isLoading } = useQuery({ queryKey: ["executive"], queryFn: () => api<typeof fallback>("/dashboard/executive"), retry: false });
   const [localProjects, setLocalProjects] = useState<any[]>([]);
-  const metrics = useMemo(() => buildProjectMetrics(localProjects, data.metrics), [localProjects, data.metrics]);
+  const [hydrated, setHydrated] = useState(false);
+  const dashboardData = data ?? { metrics: [], velocity: [], capacityHeatmap: [] };
+  const metrics = useMemo(() => buildProjectMetrics(localProjects, dashboardData.metrics), [localProjects, dashboardData.metrics]);
   const icons = [Activity, ClipboardList, Percent, Bug];
 
   useEffect(() => {
@@ -35,6 +38,8 @@ export default function DashboardPage() {
       }
     } catch {
       setLocalProjects([]);
+    } finally {
+      setHydrated(true);
     }
   }, []);
 
@@ -45,6 +50,8 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-semibold">Dashboard Proyectos</h1>
         </div>
       </div>
+      {(isLoading || !hydrated) ? <PageLoading message="Cargando indicadores reales del portafolio..." /> : (
+      <>
       <section className="grid gap-4 md:grid-cols-4">
         {metrics.map((metric, index) => {
           const Icon = icons[index] ?? Activity;
@@ -64,7 +71,7 @@ export default function DashboardPage() {
         <Card className="lg:col-span-2">
           <h2 className="mb-4 text-lg font-medium">Velocity equipos</h2>
           <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={data.velocity}>
+            <AreaChart data={dashboardData.velocity}>
               <CartesianGrid stroke="var(--chart-grid)" />
               <XAxis dataKey="sprint" stroke="var(--chart-axis)" />
               <YAxis stroke="var(--chart-axis)" />
@@ -76,7 +83,7 @@ export default function DashboardPage() {
         <Card>
           <h2 className="mb-4 text-lg font-medium">Heatmap capacidad</h2>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={data.capacityHeatmap} layout="vertical">
+            <BarChart data={dashboardData.capacityHeatmap} layout="vertical">
               <XAxis type="number" stroke="var(--chart-axis)" />
               <YAxis type="category" dataKey="team" stroke="var(--chart-axis)" width={60} />
               <Tooltip contentStyle={{ background: "var(--chart-tooltip-bg)", border: "1px solid var(--border)", color: "var(--text)" }} />
@@ -85,6 +92,8 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </Card>
       </section>
+      </>
+      )}
     </AppShell>
   );
 }

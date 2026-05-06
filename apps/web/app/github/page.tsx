@@ -5,6 +5,7 @@ import { Activity, Boxes, CheckCircle2, Copy, GitBranch, GitCommit, GitPullReque
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageLoading } from "@/components/layout/page-loading";
 
 type ProjectSummary = {
   code: string;
@@ -183,10 +184,10 @@ const serviceDocs = [
 
 export default function GithubPage() {
   const [hydrated, setHydrated] = useState(false);
-  const [projects, setProjects] = useState<ProjectSummary[]>(demoProjects);
-  const [repositories, setRepositories] = useState<GithubRepository[]>(demoRepositories);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [repositories, setRepositories] = useState<GithubRepository[]>([]);
   const [boardItems, setBoardItems] = useState<BoardItem[]>([]);
-  const [selectedProject, setSelectedProject] = useState(demoProjects[0].code);
+  const [selectedProject, setSelectedProject] = useState("");
 
   useEffect(() => {
     const savedProjects = localStorage.getItem(projectsStorageKey);
@@ -240,6 +241,10 @@ export default function GithubPage() {
 
   return (
     <AppShell>
+      {!hydrated ? (
+        <PageLoading message="Cargando estadisticas reales de GitHub..." />
+      ) : (
+      <>
       <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className="text-3xl font-semibold">GitHub</h1>
@@ -457,6 +462,8 @@ export default function GithubPage() {
           ))}
         </div>
       </section>
+      </>
+      )}
     </AppShell>
   );
 }
