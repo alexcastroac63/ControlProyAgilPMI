@@ -1,7 +1,7 @@
 import { Body, Controller, Get, NotFoundException, Param, Patch, Post, Res, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { Response } from "express";
+import type { Response } from "express";
 import { ProjectFolderRequestDto, SettingsRequestDto } from "../../common/swagger/api-docs.dto";
 import { SettingsService } from "./settings.service";
 import { AppSettings } from "./settings.types";

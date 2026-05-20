@@ -5,7 +5,7 @@ import { Prisma, UserStatus } from "@prisma/client";
 import axios from "axios";
 import argon2 from "argon2";
 import * as crypto from "crypto";
-import { Request } from "express";
+import type { Request } from "express";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { SettingsService } from "../settings/settings.service";
 import { ChangePasswordDto, LoginDto, RegisterDto, ResetPasswordDto } from "./dto";

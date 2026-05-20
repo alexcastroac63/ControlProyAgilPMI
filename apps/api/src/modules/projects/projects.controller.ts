@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Req, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { Request } from "express";
+import type { Request } from "express";
 import { CurrentUser } from "../../common/decorators/current-user.decorator";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { ProjectRequestDto } from "../../common/swagger/api-docs.dto";

@@ -10,3 +10,7 @@ storage/
 apps/api/.env
 apps/web/.env.local
 test-upload.json
+android-commandlinetools.zip
+android-commandlinetools-extract/
+android-sdk/
+package-lock.json
