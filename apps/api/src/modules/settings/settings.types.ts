@@ -12,6 +12,10 @@ export type AppSettings = {
     enabled: boolean;
     allowedDomains: string[];
   };
+  googleAuth: {
+    enabled: boolean;
+    allowedDomains: string[];
+  };
   emailNotifications: {
     enabled: boolean;
     host: string;

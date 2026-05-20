@@ -1,10 +1,9 @@
 "use client";
 
 import { Button, cn } from "@devhub/ui";
-import { BarChart3, Bell, Boxes, GitPullRequest, KanbanSquare, ListTodo, LogOut, Menu, Moon, Search, Settings, ShieldCheck, Sun, Users, X } from "lucide-react";
+import { BarChart3, Bell, Boxes, GitPullRequest, KanbanSquare, ListTodo, LogOut, Menu, Moon, Palette, Search, Settings, ShieldCheck, Sun, Users, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import * as React from "react";
-import { seedDevhubBuildProject } from "@/lib/devhub-project-seed";
 import { useSessionStore } from "@/store/session";
 
 const nav = [
@@ -12,6 +11,7 @@ const nav = [
   { href: "/projects", label: "Projects", mobile: "Projects", icon: Boxes },
   { href: "/backlog", label: "Backlog", mobile: "Backlog", icon: ListTodo },
   { href: "/board", label: "Scrum Board", mobile: "Board", icon: KanbanSquare },
+  { href: "/mockup", label: "Mockup", mobile: "Mockup", icon: Palette },
   { href: "/qa", label: "QA", mobile: "QA", icon: ShieldCheck },
   { href: "/github", label: "GitHub", mobile: "GitHub", icon: GitPullRequest },
   { href: "/teams", label: "Teams", mobile: "Teams", icon: Users },
@@ -35,7 +35,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     sessionStorage.removeItem(reloadKey);
 
-    seedDevhubBuildProject();
     const savedTheme = localStorage.getItem("devhub.theme") === "light" ? "light" : "dark";
     setTheme(savedTheme);
     document.documentElement.classList.toggle("theme-light", savedTheme === "light");

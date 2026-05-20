@@ -5,6 +5,7 @@ import { ChevronDown, Github, GitBranch, Plus, RefreshCw, Save, Trash2 } from "l
 import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageLoading } from "@/components/layout/page-loading";
 import { api } from "@/lib/api";
 
 type AppSettings = {
@@ -16,6 +17,10 @@ type AppSettings = {
     sharePointFolderPath: string;
   };
   microsoftAuth: {
+    enabled: boolean;
+    allowedDomains: string[];
+  };
+  googleAuth: {
     enabled: boolean;
     allowedDomains: string[];
   };
@@ -78,6 +83,10 @@ const defaultSettings: AppSettings = {
     enabled: false,
     allowedDomains: []
   },
+  googleAuth: {
+    enabled: false,
+    allowedDomains: []
+  },
   emailNotifications: {
     enabled: false,
     host: "",
@@ -111,7 +120,7 @@ const fallbackProjects: ProjectSummary[] = [
 ];
 
 const emptyRepositoryForm = {
-  projectCode: "PROY",
+  projectCode: "",
   owner: "",
   name: "",
   defaultBranch: "main"
@@ -120,16 +129,19 @@ const emptyRepositoryForm = {
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [domains, setDomains] = useState("");
+  const [googleDomains, setGoogleDomains] = useState("");
   const [loading, setLoading] = useState(false);
-  const [projects, setProjects] = useState<ProjectSummary[]>(fallbackProjects);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [repositories, setRepositories] = useState<GithubRepository[]>([]);
   const [repositoryForm, setRepositoryForm] = useState(emptyRepositoryForm);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     void api<AppSettings>("/settings")
       .then((data) => {
         setSettings(data);
         setDomains(data.microsoftAuth.allowedDomains.join(", "));
+        setGoogleDomains(data.googleAuth.allowedDomains.join(", "));
       })
       .catch(() => toast.error("No se pudo cargar la configuracion"));
   }, []);
@@ -137,21 +149,22 @@ export default function SettingsPage() {
   useEffect(() => {
     const savedProjects = localStorage.getItem(projectsStorageKey);
     const parsedProjects = savedProjects ? (JSON.parse(savedProjects) as ProjectSummary[]).filter((project) => project.code && project.name) : [];
-    const nextProjects = parsedProjects.length ? parsedProjects : fallbackProjects;
+    const nextProjects = parsedProjects;
     const savedRepositories = localStorage.getItem(githubStorageKey);
     const parsedRepositories = savedRepositories ? (JSON.parse(savedRepositories) as GithubRepository[]) : [];
     setProjects(nextProjects);
     setRepositories(parsedRepositories);
     setRepositoryForm((value) => ({
       ...value,
-      projectCode: nextProjects[0]?.code ?? "PROY",
+      projectCode: nextProjects[0]?.code ?? "",
       owner: settings.githubIntegration.defaultOwner || value.owner
     }));
+    setHydrated(true);
   }, [settings.githubIntegration.defaultOwner]);
 
   useEffect(() => {
-    localStorage.setItem(githubStorageKey, JSON.stringify(repositories));
-  }, [repositories]);
+    if (hydrated) localStorage.setItem(githubStorageKey, JSON.stringify(repositories));
+  }, [hydrated, repositories]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -162,11 +175,16 @@ export default function SettingsPage() {
         microsoftAuth: {
           ...settings.microsoftAuth,
           allowedDomains: domains.split(",").map((domain) => domain.trim().toLowerCase()).filter(Boolean)
+        },
+        googleAuth: {
+          ...settings.googleAuth,
+          allowedDomains: googleDomains.split(",").map((domain) => domain.trim().toLowerCase()).filter(Boolean)
         }
       };
       const updated = await api<AppSettings>("/settings", { method: "PATCH", body: JSON.stringify(payload) });
       setSettings(updated);
       setDomains(updated.microsoftAuth.allowedDomains.join(", "));
+      setGoogleDomains(updated.googleAuth.allowedDomains.join(", "));
       toast.success("Configuracion actualizada");
     } catch (error) {
       toast.error(error instanceof Error && error.message ? `No se pudo guardar: ${error.message}` : "No se pudo guardar la configuracion");
@@ -234,6 +252,10 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
+      {!hydrated ? (
+        <PageLoading message="Cargando configuracion real..." />
+      ) : (
+      <>
       <div className="mb-6">
         <h1 className="text-3xl font-semibold">Configuracion</h1>
         <p className="mt-1 text-sm text-slate-400">Almacenamiento de adjuntos, SharePoint y acceso Microsoft.</p>
@@ -296,6 +318,26 @@ export default function SettingsPage() {
             <label className="space-y-2">
               <span className="text-sm text-slate-300">Dominios permitidos</span>
               <Input value={domains} onChange={(event) => setDomains(event.target.value)} placeholder="empresa.com, grupocampestre.com" />
+            </label>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection
+          title="Inicio de sesion Google"
+          summary={`${settings.googleAuth.enabled ? "Habilitado" : "Deshabilitado"} - ${googleDomains || "sin dominios"}`}
+        >
+          <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+            <label className="flex items-center gap-3 rounded-md border border-slate-800 p-3">
+              <input
+                type="checkbox"
+                checked={settings.googleAuth.enabled}
+                onChange={(event) => setSettings((value) => ({ ...value, googleAuth: { ...value.googleAuth, enabled: event.target.checked } }))}
+              />
+              <span className="text-sm">Habilitar Google</span>
+            </label>
+            <label className="space-y-2">
+              <span className="text-sm text-slate-300">Dominios permitidos</span>
+              <Input value={googleDomains} onChange={(event) => setGoogleDomains(event.target.value)} placeholder="empresa.com, grupocampestre.com" />
             </label>
           </div>
         </SettingsSection>
@@ -515,6 +557,8 @@ export default function SettingsPage() {
           <Button disabled={loading}><Save className="h-4 w-4" />{loading ? "Guardando..." : "Guardar configuracion"}</Button>
         </div>
       </form>
+      </>
+      )}
     </AppShell>
   );
 }

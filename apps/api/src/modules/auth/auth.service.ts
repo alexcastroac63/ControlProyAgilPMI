@@ -5,7 +5,7 @@ import { Prisma, UserStatus } from "@prisma/client";
 import axios from "axios";
 import argon2 from "argon2";
 import * as crypto from "crypto";
-import { Request } from "express";
+import type { Request } from "express";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { SettingsService } from "../settings/settings.service";
 import { ChangePasswordDto, LoginDto, RegisterDto, ResetPasswordDto } from "./dto";
@@ -84,12 +84,14 @@ export class AuthService {
   }
 
   getMicrosoftLoginUrl(req: Request) {
-    if (!this.settings.getSettings().microsoftAuth.enabled) throw new BadRequestException("Login Microsoft no esta habilitado");
+    const provider = this.getOAuthProviderStatus(req).microsoft;
+    if (!provider.enabled) throw new BadRequestException("Login Microsoft no esta habilitado");
+    if (!provider.configured) throw new BadRequestException(`Login Microsoft no configurado. Falta: ${provider.missing.join(", ")}`);
     const tenantId = this.config.get("MICROSOFT_TENANT_ID", "common");
-    const clientId = this.config.getOrThrow("MICROSOFT_CLIENT_ID");
-    const redirectUri = this.config.getOrThrow("MICROSOFT_REDIRECT_URI");
+    const clientId = this.requireConfig("MICROSOFT_CLIENT_ID");
+    const redirectUri = this.getOAuthRedirectUri(req, "microsoft");
     const scope = this.config.get("MICROSOFT_SCOPES", "openid profile email offline_access User.Read Sites.ReadWrite.All");
-    const state = this.jwt.sign({ nonce: crypto.randomBytes(16).toString("hex"), returnTo: this.getWebAppUrl(req) }, { secret: this.config.getOrThrow("JWT_ACCESS_SECRET"), expiresIn: "10m" });
+    const state = this.jwt.sign({ nonce: crypto.randomBytes(16).toString("hex"), returnTo: this.getOAuthReturnTo(req) }, { secret: this.config.getOrThrow("JWT_ACCESS_SECRET"), expiresIn: "10m" });
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: "code",
@@ -101,15 +103,91 @@ export class AuthService {
     return { url: `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?${params.toString()}` };
   }
 
-  private getWebAppUrl(req: Request) {
+  getGoogleLoginUrl(req: Request) {
+    const provider = this.getOAuthProviderStatus(req).google;
+    if (!provider.enabled) throw new BadRequestException("Login Google no esta habilitado");
+    if (!provider.configured) throw new BadRequestException(`Login Google no configurado. Falta: ${provider.missing.join(", ")}`);
+    const clientId = this.requireConfig("GOOGLE_CLIENT_ID");
+    const redirectUri = this.getOAuthRedirectUri(req, "google");
+    const scope = this.config.get("GOOGLE_SCOPES", "openid profile email");
+    const state = this.jwt.sign({ nonce: crypto.randomBytes(16).toString("hex"), returnTo: this.getOAuthReturnTo(req) }, { secret: this.config.getOrThrow("JWT_ACCESS_SECRET"), expiresIn: "10m" });
+    const params = new URLSearchParams({
+      client_id: clientId,
+      response_type: "code",
+      redirect_uri: redirectUri,
+      scope,
+      state,
+      access_type: "offline",
+      prompt: "select_account"
+    });
+    return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
+  }
+
+  getOAuthProviderStatus(req: Request) {
+    const settings = this.settings.getSettings();
+    const microsoftMissing = this.getMissingConfig(["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"]);
+    const googleMissing = this.getMissingConfig(["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"]);
+    return {
+      microsoft: {
+        enabled: settings.microsoftAuth.enabled,
+        configured: microsoftMissing.length === 0,
+        missing: microsoftMissing,
+        redirectUri: this.getOAuthRedirectUri(req, "microsoft"),
+        allowedDomains: settings.microsoftAuth.allowedDomains
+      },
+      google: {
+        enabled: settings.googleAuth.enabled,
+        configured: googleMissing.length === 0,
+        missing: googleMissing,
+        redirectUri: this.getOAuthRedirectUri(req, "google"),
+        allowedDomains: settings.googleAuth.allowedDomains
+      }
+    };
+  }
+
+  private getOAuthReturnTo(req: Request) {
+    return `${this.getWebOrigin(req)}/login?oauth=success`;
+  }
+
+  private getWebOrigin(req: Request) {
     const configured = this.config.get<string>("WEB_APP_URL");
-    if (configured && !configured.includes("localhost")) return configured;
+    if (configured?.trim()) return configured.replace(/\/+$/, "");
     const forwardedHost = req.headers["x-forwarded-host"];
     const host = Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost ?? req.headers.host;
-    if (!host) return configured ?? "http://localhost:3000/dashboard";
+    if (!host) return "http://localhost:3000";
     const forwardedProto = req.headers["x-forwarded-proto"];
     const protocol = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto ?? req.protocol ?? "http";
-    return `${protocol}://${host}/dashboard`;
+    const webPort = this.config.get("WEB_PORT", "3000");
+    const normalizedHost = String(host).replace(/:\d+$/, `:${webPort}`);
+    return `${protocol}://${normalizedHost}`;
+  }
+
+  private getOAuthRedirectUri(req: Request, provider: "microsoft" | "google") {
+    const key = provider === "microsoft" ? "MICROSOFT_REDIRECT_URI" : "GOOGLE_REDIRECT_URI";
+    const configured = this.config.get<string>(key)?.trim();
+    const webOrigin = this.getWebOrigin(req);
+    if (configured && !configured.includes("tu-dominio-o-ip") && !this.shouldPreferRequestOrigin(configured, webOrigin)) return configured;
+    return `${webOrigin}/api/auth/${provider}/callback`;
+  }
+
+  private shouldPreferRequestOrigin(configuredRedirectUri: string, webOrigin: string) {
+    try {
+      const configured = new URL(configuredRedirectUri);
+      const current = new URL(webOrigin);
+      return ["localhost", "127.0.0.1"].includes(configured.hostname) && !["localhost", "127.0.0.1"].includes(current.hostname);
+    } catch {
+      return true;
+    }
+  }
+
+  private getMissingConfig(keys: string[]) {
+    return keys.filter((key) => !this.config.get<string>(key)?.trim());
+  }
+
+  private requireConfig(key: string) {
+    const value = this.config.get<string>(key)?.trim();
+    if (!value) throw new BadRequestException(`Configuracion requerida faltante: ${key}`);
+    return value;
   }
 
   async microsoftCallback(code: string, state: string, req: Request) {
@@ -119,10 +197,10 @@ export class AuthService {
     const tokenResponse = await axios.post(
       `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
       new URLSearchParams({
-        client_id: this.config.getOrThrow("MICROSOFT_CLIENT_ID"),
-        client_secret: this.config.getOrThrow("MICROSOFT_CLIENT_SECRET"),
+        client_id: this.requireConfig("MICROSOFT_CLIENT_ID"),
+        client_secret: this.requireConfig("MICROSOFT_CLIENT_SECRET"),
         code,
-        redirect_uri: this.config.getOrThrow("MICROSOFT_REDIRECT_URI"),
+        redirect_uri: this.getOAuthRedirectUri(req, "microsoft"),
         grant_type: "authorization_code"
       }),
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
@@ -134,9 +212,43 @@ export class AuthService {
     const profile = profileResponse.data as { mail?: string; userPrincipalName?: string; givenName?: string; surname?: string; displayName?: string };
     const email = (profile.mail ?? profile.userPrincipalName ?? "").toLowerCase();
     if (!email || !this.settings.isMicrosoftDomainAllowed(email)) throw new UnauthorizedException("Dominio Microsoft no autorizado");
-    const user = await this.findOrCreateMicrosoftUser(email, profile);
+    const user = await this.findOrCreateFederatedUser("microsoft", email, {
+      firstName: profile.givenName,
+      lastName: profile.surname,
+      displayName: profile.displayName
+    });
     const tokens = await this.createSessionTokens(user, req);
     return { ...tokens, microsoftAccessToken, returnTo: statePayload.returnTo };
+  }
+
+  async googleCallback(code: string, state: string, req: Request) {
+    if (!code) throw new BadRequestException("Codigo Google requerido");
+    const statePayload = await this.jwt.verifyAsync<{ returnTo: string }>(state, { secret: this.config.getOrThrow("JWT_ACCESS_SECRET") });
+    const tokenResponse = await axios.post(
+      "https://oauth2.googleapis.com/token",
+      new URLSearchParams({
+        client_id: this.requireConfig("GOOGLE_CLIENT_ID"),
+        client_secret: this.requireConfig("GOOGLE_CLIENT_SECRET"),
+        code,
+        redirect_uri: this.getOAuthRedirectUri(req, "google"),
+        grant_type: "authorization_code"
+      }),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+    const googleAccessToken = tokenResponse.data.access_token as string;
+    const profileResponse = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${googleAccessToken}` }
+    });
+    const profile = profileResponse.data as { email?: string; given_name?: string; family_name?: string; name?: string; email_verified?: boolean };
+    const email = (profile.email ?? "").toLowerCase();
+    if (!email || profile.email_verified === false || !this.settings.isGoogleDomainAllowed(email)) throw new UnauthorizedException("Cuenta Google no autorizada");
+    const user = await this.findOrCreateFederatedUser("google", email, {
+      firstName: profile.given_name,
+      lastName: profile.family_name,
+      displayName: profile.name
+    });
+    const tokens = await this.createSessionTokens(user, req);
+    return { ...tokens, googleAccessToken, returnTo: statePayload.returnTo };
   }
 
   logout(sessionId: string) {
@@ -194,31 +306,36 @@ export class AuthService {
         expiresAt
       }
     });
-    const payload = { sub: user.id, sessionId: session.id, organizationId: user.organizationId, roles: user.roles.map((r) => r.role.name), permissions: ["*"] };
+    const payload = { sub: user.id, email: user.email, sessionId: session.id, organizationId: user.organizationId, roles: user.roles.map((r) => r.role.name), permissions: ["*"] };
     const accessToken = await this.jwt.signAsync(payload, { secret: this.config.getOrThrow("JWT_ACCESS_SECRET"), expiresIn: this.config.get("JWT_ACCESS_TTL", "3h") });
     const refreshToken = await this.jwt.signAsync(payload, { secret: this.config.getOrThrow("JWT_REFRESH_SECRET"), expiresIn: this.config.get("JWT_REFRESH_TTL", "30d") });
     await this.prisma.userSession.update({ where: { id: session.id }, data: { refreshHash: await argon2.hash(refreshToken) } });
     return { accessToken, refreshToken, expiresAt: expiresAt.toISOString() };
   }
 
-  private async findOrCreateMicrosoftUser(email: string, profile: { givenName?: string; surname?: string; displayName?: string }) {
+  private async findOrCreateFederatedUser(provider: "microsoft" | "google", email: string, profile: { firstName?: string; lastName?: string; displayName?: string }) {
     const existing = await this.prisma.user.findUnique({ where: { email }, include: { roles: { include: { role: true } } } });
     if (existing) return existing;
+    const providerLabel = provider === "microsoft" ? "Microsoft" : "Google";
+    const orgSlugConfig = provider === "microsoft" ? "MICROSOFT_DEFAULT_ORG_SLUG" : "GOOGLE_DEFAULT_ORG_SLUG";
+    const orgNameConfig = provider === "microsoft" ? "MICROSOFT_DEFAULT_ORG_NAME" : "GOOGLE_DEFAULT_ORG_NAME";
+    const defaultSlug = provider === "microsoft" ? "microsoft-workspace" : "google-workspace";
+    const defaultName = provider === "microsoft" ? "Microsoft Workspace" : "Google Workspace";
     const organization = await this.prisma.organization.upsert({
-      where: { slug: this.config.get("MICROSOFT_DEFAULT_ORG_SLUG", "microsoft-workspace") },
+      where: { slug: this.config.get(orgSlugConfig, defaultSlug) },
       update: {},
-      create: { slug: this.config.get("MICROSOFT_DEFAULT_ORG_SLUG", "microsoft-workspace"), name: this.config.get("MICROSOFT_DEFAULT_ORG_NAME", "Microsoft Workspace") }
+      create: { slug: this.config.get(orgSlugConfig, defaultSlug), name: this.config.get(orgNameConfig, defaultName) }
     });
     const role = await this.prisma.role.upsert({
       where: { organizationId_name: { organizationId: organization.id, name: "VIEWER" } },
       update: {},
-      create: { organizationId: organization.id, name: "VIEWER", description: "Usuario Microsoft federado" }
+      create: { organizationId: organization.id, name: "VIEWER", description: `Usuario ${providerLabel} federado` }
     });
     return this.prisma.user.create({
       data: {
         organizationId: organization.id,
-        firstName: profile.givenName ?? profile.displayName?.split(" ")[0] ?? "Microsoft",
-        lastName: profile.surname ?? profile.displayName?.split(" ").slice(1).join(" ") ?? "User",
+        firstName: profile.firstName ?? profile.displayName?.split(" ")[0] ?? providerLabel,
+        lastName: profile.lastName ?? profile.displayName?.split(" ").slice(1).join(" ") ?? "User",
         email,
         passwordHash: await argon2.hash(crypto.randomBytes(32).toString("hex")),
         roles: { create: { roleId: role.id } }

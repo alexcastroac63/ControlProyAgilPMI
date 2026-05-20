@@ -11,10 +11,17 @@
     "lint": "corepack pnpm --filter @devhub/api lint && corepack pnpm --filter @devhub/web lint",
     "test": "corepack pnpm --filter @devhub/api test",
     "prod": "docker compose up --build -d",
+    "android:add": "cap add android",
+    "android:sync": "cap sync android",
+    "android:open": "cap open android",
+    "android:apk": "cap sync android && cd android && gradlew assembleDebug",
     "db:migrate": "corepack pnpm --filter @devhub/api prisma:migrate",
     "db:seed": "corepack pnpm --filter @devhub/api prisma:seed"
   },
   "devDependencies": {
+    "@capacitor/android": "^7.4.3",
+    "@capacitor/cli": "^7.4.3",
+    "@capacitor/core": "^7.4.3",
     "turbo": "^2.5.0",
     "typescript": "^5.8.3"
   }

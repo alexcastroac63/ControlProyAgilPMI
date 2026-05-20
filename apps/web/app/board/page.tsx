@@ -6,6 +6,7 @@ import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
+import { PageLoading } from "@/components/layout/page-loading";
 import { canSeeProject, getUserAccessContext, isActiveSprint, UserAccessContext } from "@/lib/access-control";
 
 type StoryStatus = "Por hacer" | "En curso" | "Bloqueada" | "Desarrollo finalizado" | "Listo para QA" | "En QA" | "Finalizado";
@@ -68,19 +69,16 @@ const initialItems: BoardItem[] = [
 ];
 
 export default function BoardPage() {
-  const [items, setItems] = useState<BoardItem[]>(initialItems);
-  const [sprints, setSprints] = useState<BoardSprint[]>(initialSprints);
-  const [selectedProject, setSelectedProject] = useState("PROY");
+  const [items, setItems] = useState<BoardItem[]>([]);
+  const [sprints, setSprints] = useState<BoardSprint[]>([]);
+  const [selectedProject, setSelectedProject] = useState("");
   const [showSprintForm, setShowSprintForm] = useState(false);
   const [sprintForm, setSprintForm] = useState({ name: "", goal: "", startDate: "", endDate: "" });
   const [projectSprintWeeks, setProjectSprintWeeks] = useState<Record<string, number>>({});
   const [viewingItem, setViewingItem] = useState<BoardItem | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [accessContext, setAccessContext] = useState<UserAccessContext | null>(null);
-  const [projects, setProjects] = useState<ProjectSummary[]>([
-    { code: "PROY", name: "DevOps Hub Core", status: "Desarrollo" },
-    { code: "QA", name: "QA Automation", status: "Pruebas" }
-  ]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
 
   useEffect(() => {
     const saved = localStorage.getItem(boardStorageKey);
@@ -218,6 +216,10 @@ export default function BoardPage() {
 
   return (
     <AppShell>
+      {!hydrated ? (
+        <PageLoading message="Cargando Scrum Board real..." />
+      ) : (
+      <>
       <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className="text-3xl font-semibold">Scrum Board</h1>
@@ -279,6 +281,8 @@ export default function BoardPage() {
           sprint={sprints.find((sprint) => sprint.id === viewingItem.sprintId)}
           onClose={() => setViewingItem(null)}
         />
+      )}
+      </>
       )}
     </AppShell>
   );

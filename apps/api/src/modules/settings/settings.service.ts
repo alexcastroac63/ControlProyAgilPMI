@@ -43,6 +43,16 @@ export class SettingsService {
     return Boolean(domain) && (allowed.length === 0 || allowed.includes(domain));
   }
 
+  getAllowedGoogleDomains() {
+    return this.getSettings().googleAuth.allowedDomains.map((domain) => domain.trim().toLowerCase()).filter(Boolean);
+  }
+
+  isGoogleDomainAllowed(email: string) {
+    const domain = email.split("@")[1]?.toLowerCase();
+    const allowed = this.getAllowedGoogleDomains();
+    return Boolean(domain) && (allowed.length === 0 || allowed.includes(domain));
+  }
+
   getLocalStoragePath() {
     return resolve(this.getSettings().storage.localBasePath);
   }
@@ -115,6 +125,13 @@ export class SettingsService {
           .map((domain: string) => domain.trim().toLowerCase())
           .filter(Boolean)
       },
+      googleAuth: {
+        enabled: this.config.get("GOOGLE_AUTH_ENABLED", "false") === "true",
+        allowedDomains: this.config.get("GOOGLE_ALLOWED_DOMAINS", "")
+          .split(",")
+          .map((domain: string) => domain.trim().toLowerCase())
+          .filter(Boolean)
+      },
       emailNotifications: {
         enabled: this.config.get("EMAIL_NOTIFICATIONS_ENABLED", "false") === "true",
         host: this.config.get("SMTP_HOST", ""),
@@ -156,6 +173,11 @@ function mergeSettings(base: AppSettings, input: Partial<AppSettings>): AppSetti
       ...base.microsoftAuth,
       ...(input.microsoftAuth ?? {}),
       allowedDomains: input.microsoftAuth?.allowedDomains ?? base.microsoftAuth.allowedDomains
+    },
+    googleAuth: {
+      ...base.googleAuth,
+      ...(input.googleAuth ?? {}),
+      allowedDomains: input.googleAuth?.allowedDomains ?? base.googleAuth.allowedDomains
     },
     emailNotifications: { ...base.emailNotifications, ...(input.emailNotifications ?? {}) },
     githubIntegration: { ...base.githubIntegration, ...(input.githubIntegration ?? {}) }
